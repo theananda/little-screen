@@ -143,7 +143,17 @@ textarea{min-height:140px;font-family:ui-monospace,Menlo,monospace;font-size:.82
 .sugg{display:flex;flex-wrap:wrap;gap:8px}
 
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 18px;border-radius:12px;z-index:50;max-width:calc(100% - 32px);font-weight:700}
-@media (max-width:560px){.grid{grid-template-columns:minmax(0,1fr)}.up{grid-template-columns:130px minmax(0,1fr)}.search{order:3;flex-basis:100%}.bar .wrap{flex-wrap:wrap}}
+.sites{margin:0;padding:12px 16px;list-style:none;display:grid;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
+.sites code{font-family:ui-monospace,Menlo,monospace;font-size:.88rem;user-select:all;overflow-wrap:anywhere}
+@media (max-width:560px){
+  .grid{grid-template-columns:minmax(0,1fr)}.up{grid-template-columns:130px minmax(0,1fr)}
+  .search{order:3;flex-basis:100%}.bar .wrap{flex-wrap:wrap}
+  .brand{font-size:1.1rem;gap:6px}.brand svg{width:26px;height:26px}
+  .bar .pill{font-size:.75rem;padding:3px 8px}
+  .lock-exit{flex:0 0 auto;min-height:36px;padding:6px 14px 6px 11px;gap:6px;border-radius:999px;font-size:.9rem;line-height:1}
+  .lock-exit svg{width:16px;height:16px;flex:0 0 auto}
+}
+@media (max-width:380px){.parent-bar .pill{display:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -545,6 +555,8 @@ function wirePin(mode) {
 after.pin = () => wirePin("unlock");
 
 /* ============ grown-up panel ============ */
+const ALLOWED_SITES = ["youtube-nocookie.com", "youtube.com", "googlevideo.com", "ytimg.com", "googleapis.com", "noembed.com"];
+const SITES = () => [...(location.host ? [location.host] : []), ...ALLOWED_SITES];
 const SUGGEST = ["@khanacademy", "@scishowkids", "@crashcoursekids", "@natgeokids", "@numberblocks", "@pbskids"];
 function chanItem(c, listName) {
   return `<div class="item"><div class="av">${c.thumb ? `<img src="${esc(c.thumb)}" alt="">` : initial(c.title)}</div>
@@ -590,6 +602,11 @@ function parentHTML() {
       <form id="keyForm" class="row"><input id="keyIn" type="password" autocomplete="off" placeholder="AIza…" value="${esc(S.apiKey)}" aria-label="API key"><button class="btn primary">Save key</button></form>
       <div class="row"><button class="btn sm" id="refreshBtn" ${S.apiKey ? "" : "disabled"}>Reload channel videos now</button></div>
     </div>
+    <div class="panel"><h2>Sites to allow on this device</h2>
+      <p class="muted small" style="margin:0">Add these to the allowed websites in Screen Time, Family Link or your router, so the player works while the rest of the web stays blocked.</p>
+      <ul class="sites">${SITES().map(s => `<li><code>${esc(s)}</code></li>`).join("")}</ul>
+      <div><button class="btn sm" id="copySites">Copy list</button></div>
+    </div>
     <div class="panel"><h2>PIN</h2>
       <form id="pinForm" class="row"><input id="newPin" type="password" inputmode="numeric" maxlength="6" placeholder="New PIN (4–6 numbers)" aria-label="New PIN"><button class="btn">Change PIN</button></form>
     </div>
@@ -600,16 +617,18 @@ function parentHTML() {
     </div>
     <div class="panel"><h2>Start over</h2><p class="muted small" style="margin:0">Erases the PIN, lists, requests and key on this device.</p><div><button class="btn danger" id="resetBtn">Erase everything</button></div></div>`;
   }
-  return `<header class="bar"><div class="wrap">
+  return `<header class="bar parent-bar"><div class="wrap" style="flex-wrap:nowrap">
       <button class="brand" data-go="home">${ICON.logo}<span>Little Screen</span></button><span class="pill">Grown-up mode</span><div style="flex:1"></div>
-      <button class="btn sm primary" data-go="home">${ICON.lock}<span>Lock and exit</span></button></div></header>
+      <button class="btn sm primary lock-exit" data-go="home">${ICON.lock}<span>Lock</span></button></div></header>
     <main class="wrap">
       <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button class="tab" role="tab" aria-selected="${tab === k}" data-tab="${k}">${l}${k === "requests" && S.requests.length ? `<span class="badge">${S.requests.length}</span>` : ""}</button>`).join("")}</div>
       ${body}
     </main>`;
 }
 function rerenderParent(tab) { V.tab = tab ?? V.tab; render(); }
+const looksLikeSite = s => /^(https?:\/\/)?(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)*\.(com|org|net|io|co|tv|app|dev|be|th|mm)(\/.*)?$/i.test(String(s).trim()) && !/youtu(\.be|be\.com)\/.+/i.test(s);
 async function addChannel(raw, listName, msgEl) {
+  if (looksLikeSite(raw)) { msgEl.innerHTML = `<div class="msg bad">That's a website address, not a YouTube channel. Website addresses go in your device's allowed sites (see <b>Settings → Sites to allow</b>). Here, paste a channel's @handle or a video link.</div>`; return; }
   const p = parseInput(raw);
   if (!p) { msgEl.innerHTML = `<div class="msg bad">Paste a channel link, an @handle, or a video link from that channel.</div>`; return; }
   msgEl.innerHTML = `<p class="muted">Looking it up…</p>`;
@@ -663,6 +682,10 @@ after.parent = () => {
   });
   $("#refreshBtn")?.addEventListener("click", async () => { toast("Reloading channel videos…"); await refreshFeeds(true); toast(feedState.err || "Channel videos updated"); });
   $("#pinForm")?.addEventListener("submit", async e => { e.preventDefault(); const p = $("#newPin").value; if (!/^\d{4,6}$/.test(p)) return toast("A PIN is 4 to 6 numbers."); await setPin(p); $("#newPin").value = ""; toast("PIN changed"); });
+  $("#copySites")?.addEventListener("click", () => {
+    const txt = SITES().join("\n");
+    navigator.clipboard?.writeText(txt).then(() => toast("Site list copied"), () => toast("Couldn't copy. Select the list and copy it by hand."));
+  });
   $("#expBtn")?.addEventListener("click", () => { const t = $("#expTxt"); t.value = backupJSON(); t.hidden = false; t.select(); });
   $("#dlBtn")?.addEventListener("click", () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([backupJSON()], { type: "application/json" })); a.download = `little-screen-backup-${today()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); });
   $("#impFile")?.addEventListener("change", async e => {
@@ -693,6 +716,14 @@ document.addEventListener("click", e => {
 ["pointerdown", "keydown"].forEach(ev => document.addEventListener(ev, () => { if (V.name === "parent") parentSeen = Date.now(); }, true));
 setInterval(() => { if (V.name === "parent" && Date.now() - parentSeen > 3 * 60e3) { go({ name: "home" }); toast("Settings locked after 3 minutes idle"); } }, 5000);
 document.addEventListener("visibilitychange", () => { if (document.hidden && V.name === "parent") go({ name: "home" }); });
+
+// one-time cleanup: remove website addresses that were saved as channels by mistake
+(() => {
+  const isSite = c => !c.id && /\.(com|org|net|io|co|tv|app|dev|be|th|mm)$/i.test((c.handle || "").replace(/^@/, ""));
+  const before = S.whitelist.length + S.blacklist.length;
+  S.whitelist = S.whitelist.filter(c => !isSite(c)); S.blacklist = S.blacklist.filter(c => !isSite(c));
+  if (S.whitelist.length + S.blacklist.length !== before) save();
+})();
 
 // first-run setup wiring
 const _render = render;
