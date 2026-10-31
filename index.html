@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Little Screen</title>
+<meta name="theme-color" content="#1f8a5b">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: kid side = big tap targets, channel shelf over a video grid; grown-up side = tabbed settings panel */
+:root{
+  --bg:#f2f6f4; --surface:#ffffff; --sunk:#e6eeea; --line:#d3ded8;
+  --fg:#16262d; --muted:#5b6e74;
+  --accent:#1f8a5b; --accent-ink:#ffffff; --sun:#f2b705; --danger:#c2412d; --danger-soft:#fbe6e2;
+  --display:"Fredoka","Trebuchet MS",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r:14px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1a1d; --surface:#172529; --sunk:#1d2e33; --line:#2b3f44;
+  --fg:#e7f0ee; --muted:#9db0b2; --accent:#3cbf86; --accent-ink:#06150f; --sun:#f5c63a; --danger:#ff7a63; --danger-soft:#3a201c;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1a1d; --surface:#172529; --sunk:#1d2e33; --line:#2b3f44;
+  --fg:#e7f0ee; --muted:#9db0b2; --accent:#3cbf86; --accent-ink:#06150f; --sun:#f5c63a; --danger:#ff7a63; --danger-soft:#3a201c;
+  color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 var(--body);min-height:100vh;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%;display:block}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--sun);outline-offset:2px;border-radius:6px}
+[hidden]{display:none!important}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--display);font-weight:600;line-height:1.15;text-wrap:balance;margin:0}
+h1{font-size:1.6rem} h2{font-size:1.3rem} h3{font-size:1.05rem}
+.muted{color:var(--muted)}
+.small{font-size:.875rem}
+
+/* top bar */
+.bar{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.bar .wrap{display:flex;align-items:center;gap:12px;padding-block:10px}
+.brand{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:600;font-size:1.25rem;background:none;border:0;cursor:pointer;padding:4px}
+.brand svg{width:30px;height:30px}
+.search{flex:1;min-width:0;display:flex}
+.search input{width:100%;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--sunk);font-size:.85rem;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pill.warn{background:var(--sun);color:#2a2000}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px 16px;border-radius:12px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700;text-decoration:none}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.sm{min-height:36px;padding:6px 12px;font-size:.9rem;border-radius:10px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.icon-btn{width:44px;height:44px;padding:0;border-radius:12px}
+.icon-btn svg{width:22px;height:22px}
+
+main{padding-block:20px 48px;display:grid;gap:28px}
+
+/* channel shelf */
+.shelf{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:thin}
+.chip{flex:0 0 auto;width:96px;display:grid;justify-items:center;gap:6px;background:none;border:0;cursor:pointer;padding:4px;text-align:center}
+.chip .av{width:72px;height:72px;border-radius:50%;background:var(--sunk);display:grid;place-items:center;font-family:var(--display);font-size:1.6rem;overflow:hidden;border:3px solid transparent}
+.chip.on .av,.chip:hover .av{border-color:var(--accent)}
+.chip span{font-size:.85rem;line-height:1.2;max-width:96px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+/* video grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:20px}
+.card{display:grid;gap:8px;background:none;border:0;padding:0;text-align:left;cursor:pointer;min-width:0}
+.thumb{position:relative;aspect-ratio:16/9;max-width:100%;border-radius:var(--r);overflow:hidden;background:var(--sunk)}
+.thumb img{width:100%;height:100%;object-fit:cover;transition:transform .2s}
+.card:hover .thumb img{transform:scale(1.04)}
+.dur{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.78);color:#fff;font-size:.78rem;padding:2px 6px;border-radius:6px;font-variant-numeric:tabular-nums}
+.card .t{font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .c{font-size:.85rem;color:var(--muted)}
+.skel{aspect-ratio:16/9;border-radius:var(--r);background:var(--sunk);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.5}}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;display:grid;gap:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.row > input,.row > .grow{flex:1;min-width:200px}
+.field{display:grid;gap:6px}
+.field label{font-weight:700;font-size:.9rem}
+input[type=text],input[type=password],input[type=number],textarea{padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);width:100%}
+textarea{min-height:140px;font-family:ui-monospace,Menlo,monospace;font-size:.82rem}
+.empty{text-align:center;padding:40px 16px;display:grid;gap:10px;justify-items:center}
+.empty svg{width:88px;height:88px}
+.msg{padding:10px 14px;border-radius:10px;background:var(--sunk)}
+.msg.bad{background:var(--danger-soft);color:var(--danger)}
+
+/* watch */
+.watch{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start}
+@media (max-width:900px){.watch{grid-template-columns:minmax(0,1fr)}}
+.stage{position:relative;aspect-ratio:16/9;max-width:100%;background:#000;border-radius:var(--r);overflow:hidden}
+.stage:fullscreen{border-radius:0}
+.stage #yt,.stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.shield{position:absolute;z-index:3}
+.shield.top{left:0;right:0;top:0;height:64px}
+.shield.logo{right:0;bottom:0;width:130px;height:52px}
+.cover{position:absolute;inset:0;z-index:4;background:rgba(10,18,20,.86);display:grid;place-items:center;align-content:center;gap:16px;color:#fff;text-align:center;padding:16px}
+.cover .big{width:84px;height:84px;border-radius:50%;background:var(--accent);color:var(--accent-ink);border:0;cursor:pointer;display:grid;place-items:center}
+.cover .big svg{width:40px;height:40px}
+.up-list{display:grid;gap:12px}
+.up{display:grid;grid-template-columns:150px minmax(0,1fr);gap:10px;background:none;border:0;padding:0;text-align:left;cursor:pointer}
+.up .t{font-weight:700;font-size:.92rem;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* PIN pad */
+.gate{min-height:80vh;display:grid;place-items:center;padding-block:32px}
+.gate .panel{width:min(380px,100%);text-align:center;justify-items:center}
+.dots{display:flex;gap:12px;justify-content:center;min-height:22px}
+.dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--muted)}
+.dots i.f{background:var(--fg);border-color:var(--fg)}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:12px;justify-content:center}
+.pad button{height:64px;border-radius:16px;border:1px solid var(--line);background:var(--bg);font-family:var(--display);font-size:1.5rem;cursor:pointer}
+.pad button:active{background:var(--sunk)}
+.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+
+/* parent */
+.tabs{display:flex;gap:6px;overflow-x:auto;border-bottom:1px solid var(--line);padding-bottom:0}
+.tab{flex:0 0 auto;padding:10px 14px;border:0;background:none;cursor:pointer;font-weight:700;color:var(--muted);border-bottom:3px solid transparent}
+.tab[aria-selected=true]{color:var(--fg);border-color:var(--accent)}
+.badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--danger);color:#fff;font-size:.75rem;margin-left:4px}
+.list{display:grid;gap:8px}
+.item{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.item .av{width:44px;height:44px;border-radius:50%;flex:0 0 auto;background:var(--sunk);display:grid;place-items:center;font-family:var(--display);overflow:hidden}
+.item .vt{width:96px;flex:0 0 auto;aspect-ratio:16/9;border-radius:8px;overflow:hidden;background:var(--sunk)}
+.item .vt img{width:100%;height:100%;object-fit:cover}
+.item .meta{flex:1;min-width:0}
+.item .meta b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tags{display:flex;flex-wrap:wrap;gap:8px}
+.tagx{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 12px;border-radius:999px;background:var(--danger-soft);color:var(--danger);font-weight:700}
+.tagx button{border:0;background:none;color:inherit;cursor:pointer;width:26px;height:26px;border-radius:50%}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.switch input{width:22px;height:22px;accent-color:var(--accent)}
+.sugg{display:flex;flex-wrap:wrap;gap:8px}
+
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 18px;border-radius:12px;z-index:50;max-width:calc(100% - 32px);font-weight:700}
+@media (max-width:560px){.grid{grid-template-columns:minmax(0,1fr)}.up{grid-template-columns:130px minmax(0,1fr)}.search{order:3;flex-basis:100%}.bar .wrap{flex-wrap:wrap}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" role="status" hidden></div>
+
+<script>
+"use strict";
+/* ============ storage ============ */
+const LS_KEY = "littlescreen.v1";
+const DEFAULTS = {
+  pin: null,              // {salt, hash}
+  apiKey: "",
+  whitelist: [],          // {id, handle, title, thumb, uploads}
+  blacklist: [],          // {id, handle, title, thumb}
+  videos: [],             // individually approved videos
+  keywords: [],
+  blockShorts: true,
+  dailyLimit: 0,          // minutes, 0 = no limit
+  usage: { date: "", sec: 0, extra: 0 },
+  requests: [],           // {video, ts}
+  cache: {}               // channelId -> {ts, items}
+};
+let S = load();
+function load() {
+  try { return Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), JSON.parse(localStorage.getItem(LS_KEY) || "{}")); }
+  catch (e) { return JSON.parse(JSON.stringify(DEFAULTS)); }
+}
+function save() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(S)); }
+  catch (e) { toast("Couldn't save on this device. Storage may be full or blocked."); }
+}
+
+/* ============ helpers ============ */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const today = () => new Date().toLocaleDateString("en-CA");
+const thumbOf = id => `https://i.ytimg.com/vi/${id}/mqdefault.jpg`;
+const initial = s => esc((String(s || "?").replace(/^@/, "")[0] || "?").toUpperCase());
+let toastT;
+function toast(m) { const t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2800); }
+function isoDur(s) { const m = /P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(s || ""); if (!m) return null; return ((+m[1] || 0) * 86400) + ((+m[2] || 0) * 3600) + ((+m[3] || 0) * 60) + (+m[4] || 0); }
+function fmtDur(sec) { if (!sec) return ""; const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(s).padStart(2, "0"); }
+
+const ICON = {
+  logo: `<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="5" width="28" height="20" rx="6" fill="var(--accent)"/><path d="M13 10.5v9l7.5-4.5z" fill="var(--accent-ink)"/><rect x="10" y="27" width="12" height="2.5" rx="1.25" fill="var(--sun)"/></svg>`,
+  lock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`,
+  play: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>`,
+  full: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>`,
+  tv: `<svg viewBox="0 0 88 88" aria-hidden="true"><rect x="10" y="20" width="68" height="46" rx="12" fill="var(--sunk)" stroke="var(--line)" stroke-width="3"/><circle cx="34" cy="42" r="4" fill="var(--muted)"/><circle cx="54" cy="42" r="4" fill="var(--muted)"/><path d="M36 54q8 5 16 0" stroke="var(--muted)" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M34 12l10 8 10-8" stroke="var(--accent)" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`
+};
+
+/* ============ link parsing ============ */
+function parseInput(s) {
+  s = String(s || "").trim(); let m;
+  if (!s) return null;
+  if ((m = s.match(/(?:[?&]v=|youtu\.be\/|\/shorts\/|\/embed\/|\/live\/)([\w-]{11})/))) return { type: "video", id: m[1] };
+  if ((m = s.match(/(UC[\w-]{22})/))) return { type: "channel", id: m[1] };
+  if ((m = s.match(/@([\w.\-]{3,})/))) return { type: "handle", handle: "@" + m[1].toLowerCase() };
+  if (/^[\w-]{11}$/.test(s)) return { type: "video", id: s };
+  if (/^[\w.\-]{3,30}$/.test(s)) return { type: "handle", handle: "@" + s.toLowerCase() };
+  return null;
+}
+
+/* ============ YouTube data ============ */
+async function yt(path, params) {
+  if (!S.apiKey) throw new Error("NOKEY");
+  const u = new URL("https://www.googleapis.com/youtube/v3/" + path);
+  for (const k in params) u.searchParams.set(k, params[k]);
+  u.searchParams.set("key", S.apiKey);
+  const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error?.message || "YouTube returned error " + r.status);
+  return j;
+}
+function toVideo(v) {
+  return {
+    id: v.id, title: v.snippet.title, desc: (v.snippet.description || "").slice(0, 400),
+    tags: (v.snippet.tags || []).slice(0, 25), channelId: v.snippet.channelId, channelHandle: "",
+    channelTitle: v.snippet.channelTitle, dur: isoDur(v.contentDetails?.duration), pub: v.snippet.publishedAt,
+    live: v.snippet.liveBroadcastContent || "none"
+  };
+}
+async function resolveChannel(p) {
+  if (!S.apiKey) {
+    if (p.type === "channel") return { id: p.id, handle: "", title: p.id, thumb: "" };
+    return { id: "", handle: p.handle, title: p.handle, thumb: "" };
+  }
+  const params = { part: "snippet,contentDetails" };
+  if (p.type === "channel") params.id = p.id; else params.forHandle = p.handle;
+  const j = await yt("channels", params);
+  const c = j.items?.[0];
+  if (!c) throw new Error("We couldn't find that channel. Check the link or @handle.");
+  return {
+    id: c.id, handle: (c.snippet.customUrl || "").toLowerCase(), title: c.snippet.title,
+    thumb: c.snippet.thumbnails?.medium?.url || c.snippet.thumbnails?.default?.url || "",
+    uploads: c.contentDetails?.relatedPlaylists?.uploads || "UU" + c.id.slice(2)
+  };
+}
+async function videoMeta(id) {
+  if (S.apiKey) {
+    const j = await yt("videos", { part: "snippet,contentDetails", id });
+    if (!j.items?.[0]) throw new Error("That video isn't available.");
+    return toVideo(j.items[0]);
+  }
+  // No key: oEmbed via noembed (CORS-enabled). Gives title + channel URL, no duration.
+  const r = await fetch("https://noembed.com/embed?url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id));
+  const j = await r.json();
+  if (j.error) throw new Error("That video isn't available.");
+  const url = j.author_url || "";
+  const h = url.match(/@[\w.\-]+/), c = url.match(/UC[\w-]{22}/);
+  return { id, title: j.title, desc: "", tags: [], channelId: c ? c[0] : "", channelHandle: h ? h[0].toLowerCase() : "", channelTitle: j.author_name, dur: null, pub: "", live: "none" };
+}
+async function channelFeed(ch, force) {
+  if (!S.apiKey || !ch.id) return [];
+  const c = S.cache[ch.id];
+  if (!force && c && Date.now() - c.ts < 6 * 3600e3) return c.items;
+  const pl = await yt("playlistItems", { part: "contentDetails", playlistId: ch.uploads || "UU" + ch.id.slice(2), maxResults: 40 });
+  const ids = (pl.items || []).map(i => i.contentDetails.videoId).join(",");
+  let items = [];
+  if (ids) items = ((await yt("videos", { part: "snippet,contentDetails", id: ids })).items || []).map(toVideo);
+  items.forEach(v => v.channelHandle = ch.handle || "");
+  S.cache[ch.id] = { ts: Date.now(), items }; save();
+  return items;
+}
+
+/* ============ the rules ============ */
+const keysOf = v => [v.channelId, v.channelHandle].filter(Boolean).map(x => x.toLowerCase());
+function inList(list, v) {
+  const ks = keysOf(v);
+  return list.some(c => (c.id && ks.includes(c.id.toLowerCase())) || (c.handle && ks.includes(c.handle.toLowerCase())));
+}
+const isShort = v => /#shorts?\b/i.test((v.title || "") + " " + (v.desc || "")) || (v.dur != null && v.dur > 0 && v.dur <= 60);
+function verdict(v) {
+  if (inList(S.blacklist, v)) return { ok: false, why: "This channel is blocked." };
+  if (S.videos.some(x => x.id === v.id)) return { ok: true };           // a grown-up approved this exact video
+  const hay = ((v.title || "") + " " + (v.desc || "") + " " + (v.tags || []).join(" ")).toLowerCase();
+  if (S.keywords.some(k => hay.includes(k.toLowerCase()))) return { ok: false, why: "This video has a word your grown-up blocked." };
+  if (S.blockShorts && isShort(v)) return { ok: false, why: "Shorts are turned off." };
+  if (v.live === "live" || v.live === "upcoming") return { ok: false, why: "Live streams aren't on your list." };
+  if (inList(S.whitelist, v)) return { ok: true };
+  return { ok: false, why: "This channel isn't on your list yet." };
+}
+
+/* ============ PIN ============ */
+async function hashPin(pin, salt) {
+  if (window.crypto?.subtle) {
+    const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(salt + ":" + pin));
+    return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+  let h = 2166136261; for (const ch of salt + ":" + pin) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return "f" + (h >>> 0).toString(16);
+}
+async function setPin(pin) {
+  const salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  S.pin = { salt, hash: await hashPin(pin, salt) }; save();
+}
+async function checkPin(pin) { return S.pin && (await hashPin(pin, S.pin.salt)) === S.pin.hash; }
+let fails = 0, lockedUntil = 0;
+
+/* ============ time limit ============ */
+function usage() { if (S.usage.date !== today()) { S.usage = { date: today(), sec: 0, extra: 0 }; save(); } return S.usage; }
+function secondsLeft() { if (!S.dailyLimit) return Infinity; const u = usage(); return Math.max(0, (S.dailyLimit + u.extra) * 60 - u.sec); }
+
+/* ============ router ============ */
+let V = { name: "home" };
+let parentSeen = 0;
+function go(view) {
+  if (V.name === "watch" && view.name !== "watch") destroyPlayer();
+  V = view; render(); window.scrollTo(0, 0);
+}
+function render() {
+  const app = $("#app");
+  if (!S.pin) return app.innerHTML = gateHTML("setup");
+  if (V.name !== "pin" && V.name !== "parent" && V.name !== "timeup" && secondsLeft() <= 0) V = { name: "timeup" };
+  const views = { home: homeHTML, channel: homeHTML, watch: watchHTML, pin: () => gateHTML("unlock"), parent: parentHTML, timeup: timeupHTML };
+  app.innerHTML = (views[V.name] || homeHTML)();
+  after[V.name]?.();
+}
+const after = {};
+
+/* ============ top bar ============ */
+function barHTML(withSearch = true) {
+  const left = secondsLeft();
+  const timePill = left !== Infinity ? `<span class="pill ${left < 300 ? "warn" : ""}" title="Watch time left today">${Math.ceil(left / 60)} min left</span>` : "";
+  return `<header class="bar"><div class="wrap">
+    <button class="brand" data-go="home" aria-label="Little Screen home">${ICON.logo}<span>Little Screen</span></button>
+    ${withSearch ? `<div class="search"><input id="q" type="text" placeholder="Search your videos" aria-label="Search your videos" value="${esc(V.q || "")}"></div>` : `<div style="flex:1"></div>`}
+    ${timePill}
+    <button class="btn icon-btn ghost" data-go="pin" aria-label="Grown-ups: open settings" title="Grown-ups">${ICON.lock}</button>
+  </div></header>`;
+}
+
+/* ============ kid: home / channel ============ */
+let feedState = { loading: false, items: [], err: "" };
+function allowedPool() {
+  const map = new Map();
+  for (const ch of S.whitelist) for (const v of (S.cache[ch.id]?.items || [])) map.set(v.id, v);
+  for (const v of S.videos) if (!map.has(v.id)) map.set(v.id, v);
+  return [...map.values()].filter(v => verdict(v).ok).sort((a, b) => (b.pub || "").localeCompare(a.pub || ""));
+}
+function cardHTML(v) {
+  return `<button class="card" data-watch="${esc(v.id)}">
+    <div class="thumb"><img loading="lazy" src="${thumbOf(v.id)}" alt="">${v.dur ? `<span class="dur">${fmtDur(v.dur)}</span>` : ""}</div>
+    <div><div class="t">${esc(v.title)}</div><div class="c">${esc(v.channelTitle || "")}</div></div></button>`;
+}
+function homeHTML() {
+  const chans = S.whitelist;
+  const sel = V.name === "channel" ? V.ch : null;
+  let pool = allowedPool();
+  if (sel) { const c = chans.find(x => (x.id || x.handle) === sel); pool = c ? pool.filter(v => inList([c], v)) : []; }
+  const q = (V.q || "").trim().toLowerCase();
+  if (q) pool = pool.filter(v => (v.title + " " + v.channelTitle).toLowerCase().includes(q));
+  const nothing = !chans.length && !S.videos.length;
+  const selCh = sel && chans.find(x => (x.id || x.handle) === sel);
+  let gridArea;
+  if (nothing) gridArea = `<div class="panel empty">${ICON.tv}<h2>No videos yet</h2><p class="muted">Ask a grown-up to add some channels you like.</p></div>`;
+  else if (feedState.loading && !pool.length) gridArea = `<div class="grid">${"<div class='skel'></div>".repeat(8)}</div>`;
+  else if (!pool.length) gridArea = `<div class="panel empty"><h2>${q ? "Nothing matches “" + esc(V.q) + "”" : "No videos here yet"}</h2><p class="muted">${q ? "Try another word." : (S.apiKey ? "New videos will show up here." : "A grown-up can approve videos one at a time, or add a YouTube API key so channel videos load by themselves.")}</p></div>`;
+  else gridArea = `<div class="grid">${pool.slice(0, 120).map(cardHTML).join("")}</div>`;
+
+  return barHTML() + `<main class="wrap">
+    ${chans.length ? `<section aria-label="Your channels"><div class="shelf">
+      <button class="chip ${!sel ? "on" : ""}" data-go="home"><div class="av" style="background:var(--accent);color:var(--accent-ink)">★</div><span>Everything</span></button>
+      ${chans.map(c => `<button class="chip ${sel === (c.id || c.handle) ? "on" : ""}" data-ch="${esc(c.id || c.handle)}"><div class="av">${c.thumb ? `<img src="${esc(c.thumb)}" alt="">` : initial(c.title)}</div><span>${esc(c.title)}</span></button>`).join("")}
+    </div></section>` : ""}
+    <section style="display:grid;gap:14px">
+      <h1>${selCh ? esc(selCh.title) : (q ? "Search results" : "Your videos")}</h1>
+      ${feedState.err ? `<div class="msg bad">${esc(feedState.err)}</div>` : ""}
+      ${gridArea}
+    </section>
+    <section class="panel" aria-labelledby="askh">
+      <h2 id="askh">Got a video link?</h2>
+      <p class="muted small" style="margin:0">Paste it here. If it's on your list it plays. If not, you can ask a grown-up.</p>
+      <form id="askForm" class="row"><input id="askIn" type="text" placeholder="https://youtu.be/…" aria-label="Video link"><button class="btn primary">Check</button></form>
+      <div id="askOut"></div>
+    </section>
+  </main>`;
+}
+after.home = after.channel = () => {
+  const q = $("#q");
+  q?.addEventListener("input", () => { V.q = q.value; const pos = q.selectionStart; render(); const n = $("#q"); n.focus(); n.setSelectionRange(pos, pos); });
+  $("#askForm")?.addEventListener("submit", async e => {
+    e.preventDefault();
+    const out = $("#askOut"), p = parseInput($("#askIn").value);
+    if (!p || p.type !== "video") { out.innerHTML = `<div class="msg bad">That doesn't look like a video link. Copy the link from the Share button and try again.</div>`; return; }
+    out.innerHTML = `<p class="muted">Checking…</p>`;
+    try {
+      const v = await videoMeta(p.id), vd = verdict(v);
+      if (vd.ok) { go({ name: "watch", id: v.id, v }); return; }
+      const asked = S.requests.some(r => r.video.id === v.id);
+      out.innerHTML = `<div class="item"><div class="vt"><img src="${thumbOf(v.id)}" alt=""></div><div class="meta"><b>${esc(v.title)}</b><span class="muted small">${esc(v.channelTitle)} · ${esc(vd.why)}</span></div>
+        ${inList(S.blacklist, v) ? "" : `<button class="btn sm primary" id="reqBtn" ${asked ? "disabled" : ""}>${asked ? "Asked" : "Ask a grown-up"}</button>`}</div>`;
+      $("#reqBtn")?.addEventListener("click", () => { S.requests.push({ video: v, ts: Date.now() }); save(); toast("Sent to your grown-up"); $("#reqBtn").disabled = true; $("#reqBtn").textContent = "Asked"; });
+    } catch (err) { out.innerHTML = `<div class="msg bad">${esc(err.message === "NOKEY" ? "Couldn't check that link right now." : err.message)}</div>`; }
+  });
+  refreshFeeds(false);
+};
+let feedRun = 0;
+async function refreshFeeds(force) {
+  const chans = S.whitelist.filter(c => c.id);
+  if (!S.apiKey || !chans.length) return;
+  const stale = force || chans.some(c => !S.cache[c.id] || Date.now() - S.cache[c.id].ts > 6 * 3600e3);
+  if (!stale || feedState.loading) return;
+  const run = ++feedRun; feedState.loading = true; feedState.err = "";
+  const res = await Promise.allSettled(chans.map(c => channelFeed(c, force)));
+  if (run !== feedRun) return;
+  feedState.loading = false;
+  const bad = res.filter(r => r.status === "rejected");
+  if (bad.length) feedState.err = "Some channels didn't load: " + bad[0].reason.message;
+  if (V.name === "home" || V.name === "channel") { const q = $("#q"), focused = document.activeElement === q; render(); if (focused) $("#q")?.focus(); }
+}
+
+/* ============ kid: watch ============ */
+let player = null, ytReady = null, pState = -1;
+function loadYT() {
+  if (ytReady) return ytReady;
+  ytReady = new Promise(res => {
+    window.onYouTubeIframeAPIReady = () => res(true);
+    const s = document.createElement("script");
+    s.src = "https://www.youtube.com/iframe_api";
+    s.onerror = () => { ytReady = null; res(false); };
+    document.head.appendChild(s);
+  });
+  return ytReady;
+}
+function destroyPlayer() { try { player?.destroy(); } catch (e) {} player = null; pState = -1; }
+function findVideo(id) { return allowedPool().find(v => v.id === id) || S.videos.find(v => v.id === id); }
+function watchHTML() {
+  const v = V.v || findVideo(V.id);
+  const vd = v ? verdict(v) : { ok: false, why: "This video isn't on your list." };
+  if (!vd.ok) return barHTML(false) + `<main class="wrap"><div class="panel empty">${ICON.tv}<h2>Can't play this one</h2><p class="muted">${esc(vd.why)}</p><button class="btn primary" data-go="home">Back to my videos</button></div></main>`;
+  const pool = allowedPool().filter(x => x.id !== v.id);
+  const same = pool.filter(x => keysOf(x).some(k => keysOf(v).includes(k)));
+  const next = [...same, ...pool.filter(x => !same.includes(x))].slice(0, 12);
+  V.next = next.map(x => x.id);
+  return barHTML(false) + `<main class="wrap"><div class="watch">
+    <div style="display:grid;gap:12px;min-width:0">
+      <div class="stage" id="stage">
+        <div id="yt"></div>
+        <div class="shield top"></div><div class="shield logo"></div>
+        <div class="cover" id="cover" hidden></div>
+      </div>
+      <div class="row" style="justify-content:space-between;align-items:start">
+        <div style="min-width:0;flex:1"><h1 style="font-size:1.35rem">${esc(v.title)}</h1><p class="muted" style="margin:4px 0 0">${esc(v.channelTitle || "")}</p></div>
+        <button class="btn sm" id="fsBtn">${ICON.full}<span>Full screen</span></button>
+      </div>
+    </div>
+    <aside style="display:grid;gap:12px;min-width:0"><h2>Up next</h2>
+      ${next.length ? `<div class="up-list">${next.map(x => `<button class="up" data-watch="${esc(x.id)}"><div class="thumb"><img loading="lazy" src="${thumbOf(x.id)}" alt="">${x.dur ? `<span class="dur">${fmtDur(x.dur)}</span>` : ""}</div><div style="min-width:0"><div class="t">${esc(x.title)}</div><div class="muted small">${esc(x.channelTitle || "")}</div></div></button>`).join("")}</div>` : `<p class="muted">That's everything on your list for now.</p>`}
+    </aside>
+  </div></main>`;
+}
+after.watch = async () => {
+  const v = V.v || findVideo(V.id);
+  if (!v || !verdict(v).ok) return;
+  $("#fsBtn").addEventListener("click", () => { const st = $("#stage"); (st.requestFullscreen || st.webkitRequestFullscreen)?.call(st)?.catch?.(() => {}); });
+  const ok = await loadYT();
+  if (V.name !== "watch" || V.id !== v.id) return;
+  if (!ok) { $("#yt").outerHTML = `<div class="cover"><p>The video player couldn't load. Check the internet connection.</p></div>`; return; }
+  destroyPlayer();
+  player = new YT.Player("yt", {
+    host: "https://www.youtube-nocookie.com", videoId: v.id,
+    playerVars: { autoplay: 1, rel: 0, playsinline: 1, iv_load_policy: 3, fs: 0, modestbranding: 1, origin: location.origin },
+    events: { onStateChange: e => onState(e.data), onError: () => showCover("error") }
+  });
+};
+function onState(s) {
+  pState = s;
+  if (s === 1) { $("#cover") && ($("#cover").hidden = true); }
+  else if (s === 2) showCover("paused");
+  else if (s === 0) showCover("ended");
+}
+function showCover(kind) {
+  const c = $("#cover"); if (!c) return;
+  const nextId = V.next?.[0];
+  if (kind === "paused") c.innerHTML = `<button class="big" id="resume" aria-label="Keep watching">${ICON.play}</button><span>Paused</span>`;
+  else if (kind === "ended") c.innerHTML = `<strong style="font-family:var(--display);font-size:1.4rem">All done!</strong>${nextId ? `<button class="btn primary" data-watch="${esc(nextId)}">Watch the next one</button>` : ""}<button class="btn" data-go="home">Back to my videos</button>`;
+  else c.innerHTML = `<p>This video can't be played here.</p><button class="btn" data-go="home">Back to my videos</button>`;
+  c.hidden = false;
+  $("#resume")?.addEventListener("click", () => player?.playVideo());
+}
+// count watch time
+setInterval(() => {
+  if (V.name !== "watch" || pState !== 1) return;
+  const u = usage(); u.sec++; if (u.sec % 10 === 0) save();
+  if (secondsLeft() <= 0) { save(); try { player?.pauseVideo(); } catch (e) {} if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); go({ name: "timeup" }); }
+}, 1000);
+
+function timeupHTML() {
+  return barHTML(false) + `<main class="wrap"><div class="gate"><div class="panel">
+    ${ICON.tv}<h1>That's all for today</h1>
+    <p class="muted">You've used today's watch time. A grown-up can add more.</p>
+    <button class="btn primary" data-go="pin">Grown-up: add time</button>
+  </div></div></main>`;
+}
+
+/* ============ PIN gate ============ */
+let pinBuf = "", pinFirst = "";
+function gateHTML(mode) {
+  const setup = mode === "setup";
+  const title = setup ? (pinFirst ? "Type it once more" : "Create a grown-up PIN") : "Grown-ups only";
+  const sub = setup ? "Pick 4 to 6 numbers. You'll need this PIN to change channels or add time." : "Enter your PIN to open settings.";
+  return (setup ? "" : barHTML(false)) + `<div class="wrap gate"><div class="panel" id="gatePanel">
+    ${setup ? `<div style="width:56px">${ICON.logo}</div><h1>Welcome to Little Screen</h1>` : `<div style="width:40px;color:var(--muted)">${ICON.lock}</div>`}
+    <h2>${title}</h2><p class="muted small" style="margin:0">${sub}</p>
+    <div class="dots" id="dots" aria-hidden="true"></div>
+    <input id="pinIn" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="PIN" style="position:absolute;opacity:0;width:1px;height:1px">
+    <div class="pad" role="group" aria-label="Number pad">
+      ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button data-d="${n}">${n}</button>`).join("")}
+      <button data-d="back" aria-label="Delete">⌫</button><button data-d="0">0</button><button data-d="ok" aria-label="Done" style="background:var(--accent);color:var(--accent-ink);border-color:var(--accent)">✓</button>
+    </div>
+    <p id="pinMsg" class="small" style="margin:0;min-height:1.5em;color:var(--danger)"></p>
+    ${setup ? "" : `<button class="btn ghost sm" data-go="home">Cancel</button>`}
+  </div></div>`;
+}
+function drawDots() { const d = $("#dots"); if (d) d.innerHTML = Array.from({ length: Math.max(4, pinBuf.length) }, (_, i) => `<i class="${i < pinBuf.length ? "f" : ""}"></i>`).join(""); }
+function wirePin(mode) {
+  pinBuf = ""; drawDots();
+  const msg = m => { $("#pinMsg").textContent = m; const p = $("#gatePanel"); p.classList.remove("shake"); void p.offsetWidth; p.classList.add("shake"); };
+  const submit = async () => {
+    if (pinBuf.length < 4) return msg("Use at least 4 numbers.");
+    if (mode === "setup") {
+      if (!pinFirst) { pinFirst = pinBuf; render(); return; }
+      if (pinFirst !== pinBuf) { pinFirst = ""; render(); setTimeout(() => $("#pinMsg") && ($("#pinMsg").textContent = "Those didn't match. Start again."), 0); return; }
+      await setPin(pinBuf); pinFirst = ""; parentSeen = Date.now(); V = { name: "parent", tab: "allow" }; render(); toast("PIN saved. Now add some channels."); return;
+    }
+    if (Date.now() < lockedUntil) { pinBuf = ""; drawDots(); return msg(`Too many tries. Wait ${Math.ceil((lockedUntil - Date.now()) / 1000)} seconds.`); }
+    if (await checkPin(pinBuf)) { fails = 0; parentSeen = Date.now(); go({ name: "parent", tab: S.requests.length ? "requests" : (secondsLeft() <= 0 ? "settings" : "allow") }); }
+    else { fails++; pinBuf = ""; drawDots(); if (fails >= 5) { lockedUntil = Date.now() + 30000 * (fails - 4); msg("Too many tries. Wait 30 seconds."); } else msg("That PIN isn't right."); }
+  };
+  const press = d => { if (d === "back") pinBuf = pinBuf.slice(0, -1); else if (d === "ok") return submit(); else if (pinBuf.length < 6) pinBuf += d; drawDots(); };
+  document.querySelectorAll(".pad button").forEach(b => b.addEventListener("click", () => press(b.dataset.d)));
+  const inp = $("#pinIn"); inp.focus({ preventScroll: true });
+  inp.addEventListener("keydown", e => { if (/^\d$/.test(e.key)) { e.preventDefault(); press(e.key); } else if (e.key === "Backspace") { e.preventDefault(); press("back"); } else if (e.key === "Enter") { e.preventDefault(); press("ok"); } });
+  $("#gatePanel").addEventListener("click", e => { if (!e.target.closest("button")) inp.focus({ preventScroll: true }); });
+}
+after.pin = () => wirePin("unlock");
+
+/* ============ grown-up panel ============ */
+const SUGGEST = ["@khanacademy", "@scishowkids", "@crashcoursekids", "@natgeokids", "@numberblocks", "@pbskids"];
+function chanItem(c, listName) {
+  return `<div class="item"><div class="av">${c.thumb ? `<img src="${esc(c.thumb)}" alt="">` : initial(c.title)}</div>
+    <div class="meta"><b>${esc(c.title)}</b><span class="muted small">${esc([c.handle, c.id].filter(Boolean).join(" · "))}</span></div>
+    <button class="btn sm" data-del="${listName}" data-key="${esc(c.id || c.handle)}">Remove</button></div>`;
+}
+function parentHTML() {
+  const tab = V.tab || "allow";
+  const tabs = [["allow", "Allowed channels"], ["block", "Blocked channels"], ["videos", "Single videos"], ["words", "Blocked words"], ["requests", "Requests"], ["settings", "Settings"]];
+  let body = "";
+  if (tab === "allow" || tab === "block") {
+    const allow = tab === "allow", list = allow ? S.whitelist : S.blacklist;
+    body = `<div class="panel">
+      <div><h2>${allow ? "Allowed channels" : "Blocked channels"}</h2><p class="muted small" style="margin:4px 0 0">${allow ? "Every video from these channels can play, unless a blocked word or the Shorts rule stops it." : "Nothing from these channels ever plays, even if someone shares a direct link."}</p></div>
+      <form id="chForm" class="row"><input id="chIn" type="text" placeholder="@handle, channel link, or any video link from the channel" aria-label="Channel"><button class="btn ${allow ? "primary" : "danger"}">${allow ? "Allow channel" : "Block channel"}</button></form>
+      <div id="chMsg"></div>
+      ${allow && S.apiKey ? `<div><p class="small muted" style="margin:0 0 6px">Ideas to start with:</p><div class="sugg">${SUGGEST.filter(h => !S.whitelist.some(c => c.handle === h)).map(h => `<button class="btn sm" data-sugg="${h}">+ ${h}</button>`).join("")}</div></div>` : ""}
+      ${allow && !S.apiKey ? `<div class="msg small">Without a YouTube API key, allowed channels work for shared links, but their videos won't list on the home screen. Add a key in <b>Settings</b> to fix that.</div>` : ""}
+      <div class="list">${list.length ? list.map(c => chanItem(c, allow ? "whitelist" : "blacklist")).join("") : `<p class="muted">None yet.</p>`}</div>
+    </div>`;
+  } else if (tab === "videos") {
+    body = `<div class="panel"><div><h2>Single videos</h2><p class="muted small" style="margin:4px 0 0">Approve one video without opening up its whole channel. Approved videos skip the blocked-word and Shorts rules, but a blocked channel still wins.</p></div>
+      <form id="vForm" class="row"><input id="vIn" type="text" placeholder="Video link" aria-label="Video link"><button class="btn primary">Approve video</button></form><div id="vMsg"></div>
+      <div class="list">${S.videos.length ? S.videos.map(v => `<div class="item"><div class="vt"><img src="${thumbOf(v.id)}" alt=""></div><div class="meta"><b>${esc(v.title)}</b><span class="muted small">${esc(v.channelTitle)}</span></div><button class="btn sm" data-delv="${esc(v.id)}">Remove</button></div>`).join("") : `<p class="muted">None yet.</p>`}</div></div>`;
+  } else if (tab === "words") {
+    body = `<div class="panel"><div><h2>Blocked words</h2><p class="muted small" style="margin:4px 0 0">Videos with these words in the title, description or tags won't play, even from allowed channels.</p></div>
+      <form id="kwForm" class="row"><input id="kwIn" type="text" placeholder="e.g. prank, scary, challenge" aria-label="Words to block"><button class="btn danger">Block word</button></form>
+      <div class="tags">${S.keywords.length ? S.keywords.map((k, i) => `<span class="tagx">${esc(k)}<button data-delk="${i}" aria-label="Unblock ${esc(k)}">×</button></span>`).join("") : `<p class="muted">None yet.</p>`}</div></div>`;
+  } else if (tab === "requests") {
+    body = `<div class="panel"><h2>Requests</h2>
+      <div class="list">${S.requests.length ? S.requests.map((r, i) => `<div class="item" style="flex-wrap:wrap"><div class="vt"><img src="${thumbOf(r.video.id)}" alt=""></div>
+        <div class="meta"><b>${esc(r.video.title)}</b><span class="muted small">${esc(r.video.channelTitle)} · asked ${new Date(r.ts).toLocaleString()}</span></div>
+        <div class="row"><button class="btn sm primary" data-req="video" data-i="${i}">Approve video</button><button class="btn sm" data-req="channel" data-i="${i}">Allow channel</button><button class="btn sm danger" data-req="block" data-i="${i}">Block channel</button><button class="btn sm ghost" data-req="no" data-i="${i}">Dismiss</button></div></div>`).join("") : `<p class="muted">No requests right now.</p>`}</div></div>`;
+  } else {
+    const u = usage();
+    body = `<div class="panel"><h2>Watch rules</h2>
+      <label class="switch"><span><b>Block Shorts</b><br><span class="muted small">Hides videos tagged #shorts and anything one minute or shorter.</span></span><input type="checkbox" id="shortsT" ${S.blockShorts ? "checked" : ""}></label>
+      <div class="field"><label for="limitIn">Daily watch time (minutes, 0 for no limit)</label><div class="row"><input id="limitIn" type="number" min="0" max="600" step="5" value="${S.dailyLimit}" style="max-width:140px"><span class="muted small">Watched today: ${Math.floor(u.sec / 60)} min${u.extra ? ` · ${u.extra} min added` : ""}</span></div></div>
+      ${S.dailyLimit ? `<div class="row"><button class="btn sm" data-extra="15">+15 min today</button><button class="btn sm" data-extra="30">+30 min today</button></div>` : ""}
+    </div>
+    <div class="panel"><h2>YouTube API key</h2>
+      <p class="muted small" style="margin:0">Lets Little Screen list each allowed channel's videos and read video lengths. Get a free key from the Google Cloud Console (enable “YouTube Data API v3”). Restrict it to your site's address.</p>
+      <form id="keyForm" class="row"><input id="keyIn" type="password" autocomplete="off" placeholder="AIza…" value="${esc(S.apiKey)}" aria-label="API key"><button class="btn primary">Save key</button></form>
+      <div class="row"><button class="btn sm" id="refreshBtn" ${S.apiKey ? "" : "disabled"}>Reload channel videos now</button></div>
+    </div>
+    <div class="panel"><h2>PIN</h2>
+      <form id="pinForm" class="row"><input id="newPin" type="password" inputmode="numeric" maxlength="6" placeholder="New PIN (4–6 numbers)" aria-label="New PIN"><button class="btn">Change PIN</button></form>
+    </div>
+    <div class="panel"><h2>Back up or move settings</h2>
+      <p class="muted small" style="margin:0">Copy your lists to another device. The PIN and API key are not included.</p>
+      <div class="row"><button class="btn sm" id="expBtn">Show backup</button><button class="btn sm" id="dlBtn">Download backup</button><label class="btn sm" for="impFile">Load backup file</label><input id="impFile" type="file" accept="application/json" hidden></div>
+      <textarea id="expTxt" hidden readonly aria-label="Backup data"></textarea>
+    </div>
+    <div class="panel"><h2>Start over</h2><p class="muted small" style="margin:0">Erases the PIN, lists, requests and key on this device.</p><div><button class="btn danger" id="resetBtn">Erase everything</button></div></div>`;
+  }
+  return `<header class="bar"><div class="wrap">
+      <button class="brand" data-go="home">${ICON.logo}<span>Little Screen</span></button><span class="pill">Grown-up mode</span><div style="flex:1"></div>
+      <button class="btn sm primary" data-go="home">${ICON.lock}<span>Lock and exit</span></button></div></header>
+    <main class="wrap">
+      <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button class="tab" role="tab" aria-selected="${tab === k}" data-tab="${k}">${l}${k === "requests" && S.requests.length ? `<span class="badge">${S.requests.length}</span>` : ""}</button>`).join("")}</div>
+      ${body}
+    </main>`;
+}
+function rerenderParent(tab) { V.tab = tab ?? V.tab; render(); }
+async function addChannel(raw, listName, msgEl) {
+  const p = parseInput(raw);
+  if (!p) { msgEl.innerHTML = `<div class="msg bad">Paste a channel link, an @handle, or a video link from that channel.</div>`; return; }
+  msgEl.innerHTML = `<p class="muted">Looking it up…</p>`;
+  try {
+    let ch;
+    if (p.type === "video") { const v = await videoMeta(p.id); ch = v.channelId ? await resolveChannel({ type: "channel", id: v.channelId }) : await resolveChannel({ type: "handle", handle: v.channelHandle }); if (!S.apiKey) ch.title = v.channelTitle; }
+    else ch = await resolveChannel(p);
+    const other = listName === "whitelist" ? "blacklist" : "whitelist";
+    const same = c => (ch.id && c.id === ch.id) || (ch.handle && c.handle === ch.handle);
+    if (S[listName].some(same)) { msgEl.innerHTML = `<div class="msg">${esc(ch.title)} is already on this list.</div>`; return; }
+    S[other] = S[other].filter(c => !same(c));
+    S[listName].push(ch); save();
+    rerenderParent(); toast(`${listName === "whitelist" ? "Allowed" : "Blocked"}: ${ch.title}`);
+  } catch (err) { msgEl.innerHTML = `<div class="msg bad">${esc(err.message)}</div>`; }
+}
+function backupJSON() { const { pin, apiKey, cache, usage, ...rest } = S; return JSON.stringify({ app: "littlescreen", v: 1, ...rest }, null, 2); }
+after.parent = () => {
+  document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => rerenderParent(b.dataset.tab)));
+  $("#chForm")?.addEventListener("submit", e => { e.preventDefault(); addChannel($("#chIn").value, V.tab === "allow" ? "whitelist" : "blacklist", $("#chMsg")); });
+  document.querySelectorAll("[data-sugg]").forEach(b => b.addEventListener("click", () => addChannel(b.dataset.sugg, "whitelist", $("#chMsg"))));
+  document.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => { const l = b.dataset.del, k = b.dataset.key; S[l] = S[l].filter(c => (c.id || c.handle) !== k); save(); rerenderParent(); }));
+  $("#vForm")?.addEventListener("submit", async e => {
+    e.preventDefault(); const p = parseInput($("#vIn").value), m = $("#vMsg");
+    if (!p || p.type !== "video") { m.innerHTML = `<div class="msg bad">Paste a link to a single video.</div>`; return; }
+    m.innerHTML = `<p class="muted">Looking it up…</p>`;
+    try { const v = await videoMeta(p.id); if (!S.videos.some(x => x.id === v.id)) S.videos.unshift(v); save(); rerenderParent(); toast("Approved: " + v.title); }
+    catch (err) { m.innerHTML = `<div class="msg bad">${esc(err.message === "NOKEY" ? "Couldn't look that up." : err.message)}</div>`; }
+  });
+  document.querySelectorAll("[data-delv]").forEach(b => b.addEventListener("click", () => { S.videos = S.videos.filter(v => v.id !== b.dataset.delv); save(); rerenderParent(); }));
+  $("#kwForm")?.addEventListener("submit", e => { e.preventDefault(); const w = $("#kwIn").value.split(",").map(s => s.trim()).filter(Boolean); S.keywords = [...new Set([...S.keywords, ...w])]; save(); rerenderParent(); });
+  document.querySelectorAll("[data-delk]").forEach(b => b.addEventListener("click", () => { S.keywords.splice(+b.dataset.delk, 1); save(); rerenderParent(); }));
+  document.querySelectorAll("[data-req]").forEach(b => b.addEventListener("click", async () => {
+    const r = S.requests[+b.dataset.i], v = r.video, act = b.dataset.req;
+    const drop = () => { S.requests = S.requests.filter(x => x !== r); };
+    if (act === "video") { if (!S.videos.some(x => x.id === v.id)) S.videos.unshift(v); drop(); save(); rerenderParent(); toast("Approved"); return; }
+    if (act === "no") { drop(); save(); rerenderParent(); return; }
+    const holder = document.createElement("div"); b.closest(".item").after(holder);
+    const listName = act === "channel" ? "whitelist" : "blacklist";
+    const raw = v.channelId || v.channelHandle;
+    if (!raw) { holder.innerHTML = `<div class="msg bad">This video doesn't say which channel it's from. Approve the video instead.</div>`; return; }
+    drop(); save(); await addChannel(raw, listName, holder);
+  }));
+  $("#shortsT")?.addEventListener("change", e => { S.blockShorts = e.target.checked; save(); toast(S.blockShorts ? "Shorts blocked" : "Shorts allowed"); });
+  $("#limitIn")?.addEventListener("change", e => { S.dailyLimit = Math.max(0, Math.min(600, parseInt(e.target.value, 10) || 0)); save(); rerenderParent(); toast(S.dailyLimit ? `Daily limit: ${S.dailyLimit} min` : "No daily limit"); });
+  document.querySelectorAll("[data-extra]").forEach(b => b.addEventListener("click", () => { usage().extra += +b.dataset.extra; save(); rerenderParent(); toast(`Added ${b.dataset.extra} minutes for today`); }));
+  $("#keyForm")?.addEventListener("submit", async e => {
+    e.preventDefault(); const k = $("#keyIn").value.trim(); const old = S.apiKey; S.apiKey = k;
+    if (!k) { save(); rerenderParent(); toast("API key removed"); return; }
+    try { await yt("videos", { part: "id", id: "aqz-KE-bpKQ" }); S.cache = {}; save(); rerenderParent(); toast("Key works. Saved."); }
+    catch (err) { S.apiKey = old; toast("That key didn't work: " + err.message); }
+  });
+  $("#refreshBtn")?.addEventListener("click", async () => { toast("Reloading channel videos…"); await refreshFeeds(true); toast(feedState.err || "Channel videos updated"); });
+  $("#pinForm")?.addEventListener("submit", async e => { e.preventDefault(); const p = $("#newPin").value; if (!/^\d{4,6}$/.test(p)) return toast("A PIN is 4 to 6 numbers."); await setPin(p); $("#newPin").value = ""; toast("PIN changed"); });
+  $("#expBtn")?.addEventListener("click", () => { const t = $("#expTxt"); t.value = backupJSON(); t.hidden = false; t.select(); });
+  $("#dlBtn")?.addEventListener("click", () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([backupJSON()], { type: "application/json" })); a.download = `little-screen-backup-${today()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); });
+  $("#impFile")?.addEventListener("change", async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      const d = JSON.parse(await f.text()); if (d.app !== "littlescreen") throw new Error("not a Little Screen backup");
+      for (const k of ["whitelist", "blacklist", "videos", "keywords", "requests"]) if (Array.isArray(d[k])) S[k] = d[k];
+      if (typeof d.blockShorts === "boolean") S.blockShorts = d.blockShorts;
+      if (Number.isFinite(d.dailyLimit)) S.dailyLimit = d.dailyLimit;
+      S.cache = {}; save(); rerenderParent(); toast("Backup loaded");
+    } catch (err) { toast("Couldn't load that file: " + err.message); }
+  });
+  let armed = 0;
+  $("#resetBtn")?.addEventListener("click", e => {
+    if (Date.now() - armed > 4000) { armed = Date.now(); e.target.textContent = "Tap again to erase everything"; setTimeout(() => { if ($("#resetBtn")) $("#resetBtn").textContent = "Erase everything"; }, 4000); return; }
+    try { localStorage.removeItem(LS_KEY); } catch (err) {}
+    S = load(); V = { name: "home" }; render();
+  });
+};
+
+/* ============ global clicks + auto-lock ============ */
+document.addEventListener("click", e => {
+  const g = e.target.closest("[data-go]"), w = e.target.closest("[data-watch]"), c = e.target.closest("[data-ch]");
+  if (g) { const n = g.dataset.go; if (n === "home" && V.name === "parent") toast("Locked"); return go({ name: n }); }
+  if (w) return go({ name: "watch", id: w.dataset.watch });
+  if (c) return go({ name: "channel", ch: c.dataset.ch });
+});
+["pointerdown", "keydown"].forEach(ev => document.addEventListener(ev, () => { if (V.name === "parent") parentSeen = Date.now(); }, true));
+setInterval(() => { if (V.name === "parent" && Date.now() - parentSeen > 3 * 60e3) { go({ name: "home" }); toast("Settings locked after 3 minutes idle"); } }, 5000);
+document.addEventListener("visibilitychange", () => { if (document.hidden && V.name === "parent") go({ name: "home" }); });
+
+// first-run setup wiring
+const _render = render;
+render = function () { _render(); if (!S.pin) wirePin("setup"); };
+render();
+</script>
+</body>
+</html>
