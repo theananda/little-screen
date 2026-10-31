@@ -45,7 +45,7 @@ h1{font-size:1.6rem} h2{font-size:1.3rem} h3{font-size:1.05rem}
 /* top bar */
 .bar{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
 .bar .wrap{display:flex;align-items:center;gap:12px;padding-block:10px}
-.brand{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:600;font-size:1.25rem;background:none;border:0;cursor:pointer;padding:4px}
+.brand{display:flex;align-items:center;gap:8px;white-space:nowrap;flex:0 0 auto;font-family:var(--display);font-weight:600;font-size:1.25rem;background:none;border:0;cursor:pointer;padding:4px}
 .brand svg{width:30px;height:30px}
 .search{flex:1;min-width:0;display:flex}
 .search input{width:100%;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface)}
@@ -84,9 +84,11 @@ main > *{min-width:0}
 .skel{aspect-ratio:16/9;border-radius:var(--r);background:var(--sunk);animation:pulse 1.4s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.5}}
 
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;display:grid;gap:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px;min-width:0}
+.panel > *{min-width:0}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.row > input,.row > .grow{flex:1;min-width:200px}
+.row > input,.row > .grow{flex:1 1 180px;min-width:0}
+.row > .btn{flex:0 0 auto}
 .field{display:grid;gap:6px}
 .field label{font-weight:700;font-size:.9rem}
 input[type=text],input[type=password],input[type=number],textarea{padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);width:100%}
@@ -129,12 +131,14 @@ textarea{min-height:140px;font-family:ui-monospace,Menlo,monospace;font-size:.82
 .tab{flex:0 0 auto;padding:10px 14px;border:0;background:none;cursor:pointer;font-weight:700;color:var(--muted);border-bottom:3px solid transparent}
 .tab[aria-selected=true]{color:var(--fg);border-color:var(--accent)}
 .badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--danger);color:#fff;font-size:.75rem;margin-left:4px}
-.list{display:grid;gap:8px}
+.list{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
 .item{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
 .item .av{width:44px;height:44px;border-radius:50%;flex:0 0 auto;background:var(--sunk);display:grid;place-items:center;font-family:var(--display);overflow:hidden}
 .item .vt{width:96px;flex:0 0 auto;aspect-ratio:16/9;border-radius:8px;overflow:hidden;background:var(--sunk)}
 .item .vt img{width:100%;height:100%;object-fit:cover}
 .item .meta{flex:1;min-width:0}
+.item .meta > span{display:block;overflow-wrap:anywhere}
+.item > .btn{flex:0 0 auto}
 .item .meta b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tags{display:flex;flex-wrap:wrap;gap:8px}
 .tagx{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 12px;border-radius:999px;background:var(--danger-soft);color:var(--danger);font-weight:700}
@@ -154,7 +158,8 @@ textarea{min-height:140px;font-family:ui-monospace,Menlo,monospace;font-size:.82
   .lock-exit{flex:0 0 auto;min-height:36px;padding:6px 14px 6px 11px;gap:6px;border-radius:999px;font-size:.9rem;line-height:1}
   .lock-exit svg{width:16px;height:16px;flex:0 0 auto}
 }
-@media (max-width:380px){.parent-bar .pill{display:none}}
+@media (max-width:420px){.parent-bar .pill{display:none}}
+@media (max-width:560px){.panel{padding:16px}.item{gap:10px;padding:10px}.item .av{width:40px;height:40px}.row > input{flex-basis:100%}.row > .btn{flex:1 1 auto}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -177,7 +182,8 @@ const DEFAULTS = {
   dailyLimit: 0,          // minutes, 0 = no limit
   usage: { date: "", sec: 0, extra: 0 },
   requests: [],           // {video, ts}
-  cache: {}               // channelId -> {ts, items}
+  cache: {},              // channelId -> {ts, items}
+  noEmbed: {}             // videoIds whose owners turned off playback outside YouTube
 };
 let S = load();
 function load() {
@@ -236,7 +242,7 @@ function toVideo(v) {
     id: v.id, title: v.snippet.title, desc: (v.snippet.description || "").slice(0, 400),
     tags: (v.snippet.tags || []).slice(0, 25), channelId: v.snippet.channelId, channelHandle: "",
     channelTitle: v.snippet.channelTitle, dur: isoDur(v.contentDetails?.duration), pub: v.snippet.publishedAt,
-    live: v.snippet.liveBroadcastContent || "none"
+    live: v.snippet.liveBroadcastContent || "none", embeddable: v.status?.embeddable !== false
   };
 }
 async function resolveChannel(p) {
@@ -257,7 +263,7 @@ async function resolveChannel(p) {
 }
 async function videoMeta(id) {
   if (S.apiKey) {
-    const j = await yt("videos", { part: "snippet,contentDetails", id });
+    const j = await yt("videos", { part: "snippet,contentDetails,status", id });
     if (!j.items?.[0]) throw new Error("That video isn't available.");
     return toVideo(j.items[0]);
   }
@@ -276,7 +282,7 @@ async function channelFeed(ch, force) {
   const pl = await yt("playlistItems", { part: "contentDetails", playlistId: ch.uploads || "UU" + ch.id.slice(2), maxResults: 40 });
   const ids = (pl.items || []).map(i => i.contentDetails.videoId).join(",");
   let items = [];
-  if (ids) items = ((await yt("videos", { part: "snippet,contentDetails", id: ids })).items || []).map(toVideo);
+  if (ids) items = ((await yt("videos", { part: "snippet,contentDetails,status", id: ids })).items || []).map(toVideo);
   items.forEach(v => v.channelHandle = ch.handle || "");
   S.cache[ch.id] = { ts: Date.now(), items }; save();
   return items;
@@ -290,6 +296,7 @@ function inList(list, v) {
 }
 const isShort = v => /#shorts?\b/i.test((v.title || "") + " " + (v.desc || "")) || (v.dur != null && v.dur > 0 && v.dur <= 60);
 function verdict(v) {
+  if (v.embeddable === false || S.noEmbed[v.id]) return { ok: false, why: "This video's channel only lets it play on YouTube itself." };
   if (inList(S.blacklist, v)) return { ok: false, why: "This channel is blocked." };
   if (S.videos.some(x => x.id === v.id)) return { ok: true };           // a grown-up approved this exact video
   const hay = ((v.title || "") + " " + (v.desc || "") + " " + (v.tags || []).join(" ")).toLowerCase();
@@ -430,7 +437,7 @@ async function refreshFeeds(force) {
 }
 
 /* ============ kid: watch ============ */
-let player = null, ytReady = null, pState = -1;
+let player = null, ytReady = null, pState = -1, readyAt = 0;
 function loadYT() {
   if (ytReady) return ytReady;
   ytReady = new Promise(res => {
@@ -473,15 +480,24 @@ after.watch = async () => {
   const v = V.v || findVideo(V.id);
   if (!v || !verdict(v).ok) return;
   $("#fsBtn").addEventListener("click", () => { const st = $("#stage"); (st.requestFullscreen || st.webkitRequestFullscreen)?.call(st)?.catch?.(() => {}); });
-  const ok = await loadYT();
+  const ok = await Promise.race([loadYT(), new Promise(r => setTimeout(() => r(false), 10000))]);
   if (V.name !== "watch" || V.id !== v.id) return;
-  if (!ok) { $("#yt").outerHTML = `<div class="cover"><p>The video player couldn't load. Check the internet connection.</p></div>`; return; }
+  if (!ok) { showCover("blocked"); return; }
   destroyPlayer();
   player = new YT.Player("yt", {
     host: "https://www.youtube-nocookie.com", videoId: v.id,
     playerVars: { autoplay: 1, rel: 0, playsinline: 1, iv_load_policy: 3, fs: 0, modestbranding: 1, origin: location.origin },
-    events: { onStateChange: e => onState(e.data), onError: () => showCover("error") }
+    events: {
+      onReady: () => { readyAt = Date.now(); },
+      onStateChange: e => onState(e.data),
+      onError: e => {
+        if (e.data === 101 || e.data === 150) { S.noEmbed[v.id] = true; save(); showCover("noembed"); }
+        else showCover("error");
+      }
+    }
   });
+  readyAt = 0; const started = Date.now();
+  setTimeout(() => { if (V.name === "watch" && V.id === v.id && !readyAt && started) showCover("blocked"); }, 12000);
 };
 function onState(s) {
   pState = s;
@@ -494,7 +510,9 @@ function showCover(kind) {
   const nextId = V.next?.[0];
   if (kind === "paused") c.innerHTML = `<button class="big" id="resume" aria-label="Keep watching">${ICON.play}</button><span>Paused</span>`;
   else if (kind === "ended") c.innerHTML = `<strong style="font-family:var(--display);font-size:1.4rem">All done!</strong>${nextId ? `<button class="btn primary" data-watch="${esc(nextId)}">Watch the next one</button>` : ""}<button class="btn" data-go="home">Back to my videos</button>`;
-  else c.innerHTML = `<p>This video can't be played here.</p><button class="btn" data-go="home">Back to my videos</button>`;
+  else if (kind === "noembed") c.innerHTML = `<strong style="font-family:var(--display);font-size:1.25rem">This one only plays on YouTube</strong><p style="margin:0;max-width:34ch">Its channel turned off playing on other sites. It won't show in your list again.</p>${nextId ? `<button class="btn primary" data-watch="${esc(nextId)}">Watch the next one</button>` : ""}<button class="btn" data-go="home">Back to my videos</button>`;
+  else if (kind === "blocked") c.innerHTML = `<strong style="font-family:var(--display);font-size:1.25rem">The video player is blocked</strong><p style="margin:0;max-width:40ch">Something on this device or network is stopping YouTube's player. A grown-up can allow these sites in Screen Time, Family Link or the router:</p><code style="font-size:.85rem;line-height:1.6">${SITES().map(esc).join("<br>")}</code><button class="btn" data-go="home">Back to my videos</button>`;
+  else c.innerHTML = `<p>This video can't be played here.</p>${nextId ? `<button class="btn primary" data-watch="${esc(nextId)}">Watch the next one</button>` : ""}<button class="btn" data-go="home">Back to my videos</button>`;
   c.hidden = false;
   $("#resume")?.addEventListener("click", () => player?.playVideo());
 }
@@ -561,7 +579,7 @@ const SITES = () => [...(location.host ? [location.host] : []), ...ALLOWED_SITES
 const SUGGEST = ["@khanacademy", "@scishowkids", "@crashcoursekids", "@natgeokids", "@numberblocks", "@pbskids"];
 function chanItem(c, listName) {
   return `<div class="item"><div class="av">${c.thumb ? `<img src="${esc(c.thumb)}" alt="">` : initial(c.title)}</div>
-    <div class="meta"><b>${esc(c.title)}</b><span class="muted small">${esc([c.handle, c.id].filter(Boolean).join(" · "))}</span></div>
+    <div class="meta"><b>${esc(c.title)}</b><span class="muted small" title="${esc(c.id || "")}">${esc(c.handle || c.id)}</span></div>
     <button class="btn sm" data-del="${listName}" data-key="${esc(c.id || c.handle)}">Remove</button></div>`;
 }
 function parentHTML() {
@@ -724,6 +742,8 @@ document.addEventListener("visibilitychange", () => { if (document.hidden && V.n
   const before = S.whitelist.length + S.blacklist.length;
   S.whitelist = S.whitelist.filter(c => !isSite(c)); S.blacklist = S.blacklist.filter(c => !isSite(c));
   if (S.whitelist.length + S.blacklist.length !== before) save();
+  // older saved video lists don't record which videos can play outside YouTube; reload them once
+  if (Object.values(S.cache).some(c => (c.items || []).some(v => !("embeddable" in v)))) { S.cache = {}; save(); }
 })();
 
 // first-run setup wiring
