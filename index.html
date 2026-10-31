@@ -107,7 +107,8 @@ textarea{min-height:140px;font-family:ui-monospace,Menlo,monospace;font-size:.82
 .shield{position:absolute;z-index:3}
 .shield.top{left:0;right:0;top:0;height:64px}
 .shield.logo{right:0;bottom:0;width:130px;height:52px}
-.cover{position:absolute;inset:0;z-index:4;background:rgba(10,18,20,.86);display:grid;place-items:center;align-content:center;gap:16px;color:#fff;text-align:center;padding:16px}
+.cover{position:absolute;inset:0;z-index:4;background:rgba(10,18,20,.86);display:grid;place-items:center;align-content:safe center;gap:16px;color:#fff;text-align:center;padding:16px;overflow-y:auto}
+@media (max-width:560px){.cover{gap:8px;padding:12px;font-size:.82rem;line-height:1.35}.cover strong{font-size:1.05rem!important}.cover code{font-size:.75rem!important;line-height:1.4!important}.cover .btn{min-height:36px;padding:6px 12px;font-size:.85rem}.cover .big{width:64px;height:64px}}
 .cover .big{width:84px;height:84px;border-radius:50%;background:var(--accent);color:var(--accent-ink);border:0;cursor:pointer;display:grid;place-items:center}
 .cover .big svg{width:40px;height:40px}
 .up-list{display:grid;gap:12px}
@@ -150,15 +151,18 @@ textarea{min-height:140px;font-family:ui-monospace,Menlo,monospace;font-size:.82
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 18px;border-radius:12px;z-index:50;max-width:calc(100% - 32px);font-weight:700}
 .sites{margin:0;padding:12px 16px;list-style:none;display:grid;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
 .sites code{font-family:ui-monospace,Menlo,monospace;font-size:.88rem;user-select:all;overflow-wrap:anywhere}
+.row > .fs-btn{flex:0 0 auto;white-space:nowrap}
+.fs-btn svg{width:18px;height:18px;flex:0 0 auto}
 @media (max-width:560px){
   .grid{grid-template-columns:minmax(0,1fr)}.up{grid-template-columns:130px minmax(0,1fr)}
   .search{order:3;flex-basis:100%}.bar .wrap{flex-wrap:wrap}
   .brand{font-size:1.1rem;gap:6px}.brand svg{width:26px;height:26px}
   .bar .pill{font-size:.75rem;padding:3px 8px}
   .lock-exit{flex:0 0 auto;min-height:36px;padding:6px 14px 6px 11px;gap:6px;border-radius:999px;font-size:.9rem;line-height:1}
-  .lock-exit svg{width:16px;height:16px;flex:0 0 auto}
+.lock-exit svg{width:16px;height:16px;flex:0 0 auto}
 }
 @media (max-width:420px){.parent-bar .pill{display:none}}
+@media (max-width:560px){.row > .btn.fs-btn{flex:0 0 40px;width:40px;height:40px;min-height:40px;padding:0;border-radius:12px}.fs-btn .lbl{display:none}}
 @media (max-width:560px){.panel{padding:16px}.item{gap:10px;padding:10px}.item .av{width:40px;height:40px}.row > input{flex-basis:100%}.row > .btn{flex:1 1 auto}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -468,7 +472,7 @@ function watchHTML() {
       </div>
       <div class="row" style="justify-content:space-between;align-items:start">
         <div style="min-width:0;flex:1"><h1 style="font-size:1.35rem">${esc(v.title)}</h1><p class="muted" style="margin:4px 0 0">${esc(v.channelTitle || "")}</p></div>
-        <button class="btn sm" id="fsBtn">${ICON.full}<span>Full screen</span></button>
+        <button class="btn sm fs-btn" id="fsBtn" aria-label="Full screen" title="Full screen">${ICON.full}<span class="lbl">Full screen</span></button>
       </div>
     </div>
     <aside style="display:grid;gap:12px;min-width:0"><h2>Up next</h2>
